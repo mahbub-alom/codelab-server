@@ -3,7 +3,7 @@ const app = express();
 const cors = require("cors");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 app.use(cors());
 app.use(express.json());
@@ -26,6 +26,7 @@ async function run() {
 
     const userCollection = client.db("codelab").collection("user");
 
+    //user related
     app.post("/postUser", async (req, res) => {
       const data = req.body;
       const result = await userCollection.insertOne(data);
@@ -39,7 +40,34 @@ async function run() {
         query = { email: user };
       }
       const result = await userCollection.find(query).toArray();
-      console.log(result)
+      res.send(result);
+    });
+
+    app.get("/getSingleUser/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await userCollection.find(filter).toArray();
+      res.send(result);
+    });
+
+    app.put("/updateUser/:id", async (req, res) => {
+      const data = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedData = {
+        $set: {
+          name: data.userName,
+          userPhone: data.userPhone,
+          email: data.userEmail,
+          userAddress: data.userAddress,
+        },
+      };
+      const result = await userCollection.updateOne(
+        filter,
+        updatedData,
+        options
+      );
       res.send(result);
     });
 
