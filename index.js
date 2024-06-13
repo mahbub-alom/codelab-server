@@ -26,6 +26,13 @@ async function run() {
 
     const userCollection = client.db("codelab").collection("user");
     const classCollection = client.db("codelab").collection("class");
+    const reviewCollection = client.db("codelab").collection("review");
+
+    //reviews
+    app.get("/review", async (req, res) => {
+      const result = await reviewCollection.find().toArray();
+      res.send(result);
+    });
 
     //user related
     app.post("/postUser", async (req, res) => {
