@@ -25,6 +25,7 @@ async function run() {
     await client.connect();
 
     const userCollection = client.db("codelab").collection("user");
+    const classCollection = client.db("codelab").collection("class");
 
     //user related
     app.post("/postUser", async (req, res) => {
@@ -68,6 +69,14 @@ async function run() {
         updatedData,
         options
       );
+      res.send(result);
+    });
+
+    //class related
+
+    app.post("/classes", async (req, res) => {
+      const classData = req.body;
+      const result = await classCollection.insertOne(classData);
       res.send(result);
     });
 
