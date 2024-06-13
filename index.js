@@ -27,6 +27,7 @@ async function run() {
     const userCollection = client.db("codelab").collection("user");
     const classCollection = client.db("codelab").collection("class");
     const reviewCollection = client.db("codelab").collection("review");
+    const cartsCollection = client.db("codelab").collection("carts");
 
     //reviews
     app.get("/review", async (req, res) => {
@@ -94,6 +95,18 @@ async function run() {
         query = { instructorEmail: user };
       }
       const result = await classCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/getAllClass", async (req, res) => {
+      const result = await classCollection.find().toArray();
+      res.send(result);
+    });
+
+    //after cart added 
+    app.post("/carts", async (req, res) => {
+      const cartData = req.body;
+      const result = await cartsCollection.insertOne(cartData);
       res.send(result);
     });
 
