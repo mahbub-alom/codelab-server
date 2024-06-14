@@ -11,18 +11,18 @@ app.use(cors());
 app.use(express.json());
 
 const verifyJWT = (req, res, next) => {
-  const authorization=req.headers.authorization;
-  if(!authorization){
-    return res.status(401).send({message:"forbidden access"})
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res.status(401).send({ message: "forbidden access" });
   }
-  const token=authorization.split(" ")[1]
-  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(err,decoded)=>{
-    if(err){
-      res.status(401).send({message:"forbidden access"})
+  const token = authorization.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      res.status(401).send({ message: "forbidden access" });
     }
-    req.decoded=decoded;
-    next()
-  })
+    req.decoded = decoded;
+    next();
+  });
 };
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.qud1tkv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -65,17 +65,27 @@ async function run() {
     //user related
     app.post("/postUser", async (req, res) => {
       const data = req.body;
+      const query = { email: data.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists" });
+      }
       const result = await userCollection.insertOne(data);
       res.send(result);
     });
 
-    app.get("/getUser",verifyJWT, async (req, res) => {
+
+    app.get("/getUser", verifyJWT, async (req, res) => {
       const user = req?.query?.email;
       let query = {};
       if (user) {
         query = { email: user };
       }
       const result = await userCollection.find(query).toArray();
+      res.send(result);
+    });
+    app.get("/instructor", async (req, res) => {
+      const result = await userCollection.find().toArray();
       res.send(result);
     });
 
@@ -86,7 +96,7 @@ async function run() {
       res.send(result);
     });
 
-    app.put("/updateUser/:id",verifyJWT, async (req, res) => {
+    app.put("/updateUser/:id", verifyJWT, async (req, res) => {
       const data = req.body;
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -109,7 +119,7 @@ async function run() {
 
     //class related
 
-    app.post("/classes",verifyJWT, async (req, res) => {
+    app.post("/classes", verifyJWT, async (req, res) => {
       const classData = req.body;
       const result = await classCollection.insertOne(classData);
       res.send(result);
@@ -137,7 +147,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/classes/update",verifyJWT, async (req, res) => {
+    app.patch("/classes/update", verifyJWT, async (req, res) => {
       const cls = req.body.classData;
       const filter = { _id: new ObjectId(cls?.classId) };
       const updateDoc = {
@@ -207,7 +217,7 @@ async function run() {
       });
     });
 
-    app.post("/payments",verifyJWT, async (req, res) => {
+    app.post("/payments", verifyJWT, async (req, res) => {
       const payment = req.body;
       const filter = { _id: new ObjectId(payment._id) };
       const oldClass = await classCollection.findOne(filter);
