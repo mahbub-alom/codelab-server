@@ -5,6 +5,7 @@ require("dotenv").config();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
+const jwt = require("jsonwebtoken");
 
 app.use(cors());
 app.use(express.json());
@@ -30,6 +31,15 @@ async function run() {
     const reviewCollection = client.db("codelab").collection("review");
     const cartsCollection = client.db("codelab").collection("carts");
     const paymentCollection = client.db("codelab").collection("payment");
+
+    //jwt
+    app.post("/jwt",(req, res) => {
+      const data = req.body;
+      const token = jwt.sign(
+        data,process.env.ACCESS_TOKEN_SECRET,{ expiresIn: "1h" }
+      );
+      res.send({ token });
+    });
 
     //reviews
     app.get("/review", async (req, res) => {
@@ -102,6 +112,36 @@ async function run() {
 
     app.get("/getAllClass", async (req, res) => {
       const result = await classCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/getSingleClass/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await classCollection.find(filter).toArray();
+      res.send(result);
+    });
+
+    app.patch("/classes/update", async (req, res) => {
+      const cls = req.body.classData;
+      const filter = { _id: new ObjectId(cls?.classId) };
+      const updateDoc = {
+        $set: {
+          className: `${cls?.className}`,
+          classImage: `${cls?.classImage}`,
+          availableSeats: `${cls?.availableSeats}`,
+          price: `${cls?.price}`,
+        },
+      };
+
+      const result = await classCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.delete("/removeClass/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await classCollection.deleteOne(filter);
       res.send(result);
     });
 
