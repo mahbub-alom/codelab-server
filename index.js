@@ -4,6 +4,7 @@ const cors = require("cors");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 
 app.use(cors());
 app.use(express.json());
@@ -28,6 +29,7 @@ async function run() {
     const classCollection = client.db("codelab").collection("class");
     const reviewCollection = client.db("codelab").collection("review");
     const cartsCollection = client.db("codelab").collection("carts");
+    const paymentCollection = client.db("codelab").collection("payment");
 
     //reviews
     app.get("/review", async (req, res) => {
@@ -103,10 +105,77 @@ async function run() {
       res.send(result);
     });
 
-    //after cart added 
+    //after cart added
     app.post("/carts", async (req, res) => {
       const cartData = req.body;
       const result = await cartsCollection.insertOne(cartData);
+      res.send(result);
+    });
+
+    app.get("/getCarts", async (req, res) => {
+      const user = req?.query?.email;
+      let query = {};
+      if (user) {
+        query = { email: user };
+      }
+      const result = await cartsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.delete("/carts/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await cartsCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    app.delete("/classes/selected", async (req, res) => {
+      // const id = req.query.id;
+      const email = req?.query?.email;
+      const query = { email: email };
+      const result = await cartsCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // payment methods stripe
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const filter = { _id: new ObjectId(payment._id) };
+      const oldClass = await classCollection.findOne(filter);
+
+      const newSeat = parseFloat(oldClass?.availableSeats) - 1;
+      const newTotalEnrolled = parseFloat(oldClass?.totalEnrolled) + 1;
+
+      const updateDoc = {
+        $set: {
+          availableSeats: `${newSeat}`,
+          totalEnrolled: `${newTotalEnrolled}`,
+        },
+      };
+      const updateResult = await classCollection.updateOne(filter, updateDoc);
+
+      const postResult = await paymentCollection.insertOne(payment);
+      res.send({ postResult, updateResult });
+    });
+
+    app.get("/payments/enrolled/student", async (req, res) => {
+      const email = req.query.email;
+      const filter = { instructorEmail: email };
+      const result = await paymentCollection.find(filter).toArray();
       res.send(result);
     });
 
